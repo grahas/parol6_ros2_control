@@ -18,6 +18,7 @@ parol6_moveit's real_robot.launch.py (requires MoveIt2 to be installed).
 
 import os
 
+import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
@@ -26,25 +27,17 @@ from launch_ros.actions import Node
 
 
 def _build_robot_description(context):
-    parol6_share = get_package_share_directory("parol6")
     bringup_share = get_package_share_directory("parol6_bringup")
+    xacro_path = os.path.join(bringup_share, "urdf", "parol6_with_tools.xacro")
 
-    urdf_path = os.path.join(parol6_share, "urdf", "parol6.urdf")
-    ros2_control_fragment_path = os.path.join(bringup_share, "urdf", "parol6.ros2_control.xml")
-
-    with open(urdf_path, "r") as f:
-        urdf_xml = f.read()
-    with open(ros2_control_fragment_path, "r") as f:
-        ros2_control_xml = f.read()
-
-    bridge_host = LaunchConfiguration("bridge_host").perform(context)
-    bridge_port = LaunchConfiguration("bridge_port").perform(context)
-    ros2_control_xml = ros2_control_xml.replace("__BRIDGE_HOST__", bridge_host)
-    ros2_control_xml = ros2_control_xml.replace("__BRIDGE_PORT__", bridge_port)
-
-    if "</robot>" not in urdf_xml:
-        raise RuntimeError(f"{urdf_path} does not look like a URDF (no </robot> tag found)")
-    return urdf_xml.replace("</robot>", ros2_control_xml + "\n</robot>")
+    mappings = {
+        "tool": LaunchConfiguration("tool").perform(context),
+        "tool_variant": LaunchConfiguration("tool_variant").perform(context),
+        "bridge_host": LaunchConfiguration("bridge_host").perform(context),
+        "bridge_port": LaunchConfiguration("bridge_port").perform(context),
+    }
+    doc = xacro.process_file(xacro_path, mappings=mappings)
+    return doc.toxml()
 
 
 def _launch_setup(context, *args, **kwargs):
@@ -141,6 +134,24 @@ def _launch_setup(context, *args, **kwargs):
 
 def generate_launch_description():
     declared_arguments = [
+        DeclareLaunchArgument(
+            "tool",
+            default_value="none",
+            description=(
+                "End-of-arm tool mounted on L6: none, pneumatic, ssg48, msg, or vacuum. "
+                "Must match what's actually bolted onto the robot and what you pass to "
+                "RobotClient.select_tool() -- see parol6_with_tools.xacro and README.md."
+            ),
+        ),
+        DeclareLaunchArgument(
+            "tool_variant",
+            default_value="",
+            description=(
+                "Tool variant, meaning depends on 'tool': pneumatic -> vertical/horizontal, "
+                "ssg48 -> finger/pinch, msg -> 100mm/150mm/200mm. Leave empty for the "
+                "per-tool default. Ignored for tool=none/vacuum."
+            ),
+        ),
         DeclareLaunchArgument(
             "robot_host", default_value="127.0.0.1", description="parol6-server host"
         ),

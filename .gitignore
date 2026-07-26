@@ -1,0 +1,15 @@
+# colcon / ROS2 build artifacts (this repo is meant to live under a workspace's src/)
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Editor/OS cruft
+.vscode/
+.idea/
+*.swp
+.DS_Store

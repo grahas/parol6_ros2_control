@@ -1,83 +1,28 @@
 <?xml version="1.0"?>
 <!--
-  PAROL6 arm + ros2_control + an optional end-of-arm tool, all selected via
-  xacro args instead of file-swapping or string-splicing.
+  PAROL6 arm + tool (via parol6's own parol6_with_tools.xacro) + ros2_control,
+  for launch files that don't go through MoveIt.
 
   Args:
-    tool           : "none" (default), "pneumatic", "ssg48", "msg", or "vacuum"
-    tool_variant   : meaning depends on tool
-                       pneumatic: "vertical" (default) or "horizontal"
-                       ssg48:     "finger" (default) or "pinch"
-                       msg:       "100mm" (default), "150mm", or "200mm"
-                       vacuum:    ignored, no variants
-                       none:      ignored
+    tool, tool_variant: see $(find parol6)/urdf/parol6_with_tools.xacro
     bridge_host, bridge_port, connect_timeout_sec: see parol6.ros2_control.xacro
-
-  The tool, if any, mounts on L6 (the wrist flange) and always exposes a
-  "tool_tcp" frame at the tool's actual working point (needle tip,
-  gripper-jaw midpoint, suction cup face, etc.) regardless of which tool is
-  selected, so anything downstream (MoveIt's IK target frame, a Cartesian
-  move, RViz) can target "tool_tcp" without caring which tool is mounted.
-  When tool="none", "tool_tcp" is just L6 itself (the bare flange).
-
-  None of the tool geometry here is wired into parol6_hardware_interface.
-  Grippers are actuated via parol6's own tool_action()/select_tool() API
-  (digital I/O or the serial gripper bus, depending on tool), not
-  ros2_control joints. This file is for accurate visualization and
-  Cartesian-frame placement, not for commanding the gripper.
 -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="parol6">
-  <xacro:arg name="tool" default="none" />
-  <xacro:arg name="tool_variant" default="" />
   <xacro:arg name="bridge_host" default="127.0.0.1" />
   <xacro:arg name="bridge_port" default="6001" />
   <xacro:arg name="connect_timeout_sec" default="10.0" />
 
-  <xacro:property name="tool" value="$(arg tool)" />
-  <xacro:property name="tool_variant" value="$(arg tool_variant)" />
+  <!-- tool/tool_variant xacro:args are declared inside the included file
+       below, not here. xacro.process_file()'s mappings dict applies to
+       any xacro:arg in the final merged document, regardless of which
+       included file declared it, so this file doesn't need to redeclare
+       them itself. -->
+  <xacro:include filename="$(find parol6)/urdf/parol6_with_tools.xacro" />
 
-  <!-- Base arm: plain, non-xacro URDF from the parol6 package. xacro
-       splices in a raw robot document's children fine via include. -->
-  <xacro:include filename="$(find parol6)/urdf/parol6.urdf" />
-
-  <!-- ros2_control -->
   <xacro:include filename="$(find parol6_bringup)/urdf/parol6.ros2_control.xacro" />
   <xacro:parol6_ros2_control
       bridge_host="$(arg bridge_host)"
       bridge_port="$(arg bridge_port)"
       connect_timeout_sec="$(arg connect_timeout_sec)" />
-
-  <!-- Tool selection -->
-  <xacro:include filename="$(find parol6_bringup)/urdf/tools/pneumatic_gripper.xacro" />
-  <xacro:include filename="$(find parol6_bringup)/urdf/tools/ssg48_gripper.xacro" />
-  <xacro:include filename="$(find parol6_bringup)/urdf/tools/msg_gripper.xacro" />
-  <xacro:include filename="$(find parol6_bringup)/urdf/tools/vacuum_gripper.xacro" />
-
-  <xacro:if value="${tool == 'pneumatic'}">
-    <xacro:property name="_variant" value="${tool_variant if tool_variant else 'vertical'}" />
-    <xacro:parol6_tool_pneumatic parent="L6" variant="${_variant}" />
-  </xacro:if>
-  <xacro:if value="${tool == 'ssg48'}">
-    <xacro:property name="_variant" value="${tool_variant if tool_variant else 'finger'}" />
-    <xacro:parol6_tool_ssg48 parent="L6" variant="${_variant}" />
-  </xacro:if>
-  <xacro:if value="${tool == 'msg'}">
-    <xacro:property name="_variant" value="${tool_variant if tool_variant else '100mm'}" />
-    <xacro:parol6_tool_msg parent="L6" variant="${_variant}" />
-  </xacro:if>
-  <xacro:if value="${tool == 'vacuum'}">
-    <xacro:parol6_tool_vacuum parent="L6" />
-  </xacro:if>
-
-  <!-- tool="none": no tool links at all. "tool_tcp" is just L6 itself, so
-       downstream consumers always have a "tool_tcp" frame to target. -->
-  <xacro:if value="${tool == 'none'}">
-    <link name="tool_tcp" />
-    <joint name="tool_tcp_joint" type="fixed">
-      <parent link="L6" />
-      <child link="tool_tcp" />
-      <origin xyz="0 0 0" rpy="0 0 0" />
-    </joint>
-  </xacro:if>
 
 </robot>

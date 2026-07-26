@@ -27,12 +27,13 @@ target_include_directories(
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-ament_target_dependencies(
+target_link_libraries(
   parol6_hardware_interface
-  hardware_interface
-  pluginlib
-  rclcpp
-  rclcpp_lifecycle
+  PUBLIC
+  hardware_interface::hardware_interface
+  pluginlib::pluginlib
+  rclcpp::rclcpp
+  rclcpp_lifecycle::rclcpp_lifecycle
 )
 
 pluginlib_export_plugin_description_file(hardware_interface parol6_hardware_interface.xml)
@@ -52,7 +53,6 @@ if(BUILD_TESTING)
 endif()
 
 ament_export_include_directories(include)
-ament_export_libraries(parol6_hardware_interface)
 ament_export_targets(export_parol6_hardware_interface HAS_LIBRARY_TARGET)
 ament_export_dependencies(hardware_interface pluginlib rclcpp rclcpp_lifecycle)
 

@@ -41,10 +41,10 @@ std::string get_string_param(
 }  // namespace
 
 hardware_interface::CallbackReturn Parol6SystemInterface::on_init(
-  const hardware_interface::HardwareInfo & info)
+  const hardware_interface::HardwareComponentInterfaceParams & params)
 {
   if (
-    hardware_interface::SystemInterface::on_init(info) !=
+    hardware_interface::SystemInterface::on_init(params) !=
     hardware_interface::CallbackReturn::SUCCESS) {
     return hardware_interface::CallbackReturn::ERROR;
   }
@@ -75,40 +75,42 @@ hardware_interface::CallbackReturn Parol6SystemInterface::on_init(
   bridge_port_ = static_cast<int>(get_double_param(info_, "bridge_port", 6001));
   connect_timeout_sec_ = get_double_param(info_, "connect_timeout_sec", 5.0);
 
-  hw_positions_.assign(kNumJoints, std::numeric_limits<double>::quiet_NaN());
-  hw_velocities_.assign(kNumJoints, std::numeric_limits<double>::quiet_NaN());
-  hw_commands_position_.assign(kNumJoints, std::numeric_limits<double>::quiet_NaN());
+  last_position_rad_.fill(std::numeric_limits<double>::quiet_NaN());
+
+  // Interface storage/export is handled by the framework's default
+  // on_export_state_interfaces()/on_export_command_interfaces() based on
+  // the URDF-declared interfaces -- we just cache handles to it below,
+  // once export has happened (on_configure()).
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
-std::vector<hardware_interface::StateInterface> Parol6SystemInterface::export_state_interfaces()
+bool Parol6SystemInterface::cache_interface_handles()
 {
-  std::vector<hardware_interface::StateInterface> interfaces;
-  interfaces.reserve(kNumJoints * 2);
-  for (size_t i = 0; i < kNumJoints; ++i) {
-    interfaces.emplace_back(
-      info_.joints[i].name, hardware_interface::HW_IF_POSITION, &hw_positions_[i]);
-    interfaces.emplace_back(
-      info_.joints[i].name, hardware_interface::HW_IF_VELOCITY, &hw_velocities_[i]);
+  try {
+    for (size_t i = 0; i < info_.joints.size(); ++i) {
+      const std::string & name = info_.joints[i].name;
+      position_state_handles_[i] =
+        get_state_interface_handle(name + "/" + hardware_interface::HW_IF_POSITION);
+      velocity_state_handles_[i] =
+        get_state_interface_handle(name + "/" + hardware_interface::HW_IF_VELOCITY);
+      position_command_handles_[i] =
+        get_command_interface_handle(name + "/" + hardware_interface::HW_IF_POSITION);
+    }
+  } catch (const std::exception & e) {
+    RCLCPP_FATAL(logger(), "Failed to resolve exported interface handles: %s", e.what());
+    return false;
   }
-  return interfaces;
-}
-
-std::vector<hardware_interface::CommandInterface> Parol6SystemInterface::export_command_interfaces()
-{
-  std::vector<hardware_interface::CommandInterface> interfaces;
-  interfaces.reserve(kNumJoints);
-  for (size_t i = 0; i < kNumJoints; ++i) {
-    interfaces.emplace_back(
-      info_.joints[i].name, hardware_interface::HW_IF_POSITION, &hw_commands_position_[i]);
-  }
-  return interfaces;
+  return true;
 }
 
 hardware_interface::CallbackReturn Parol6SystemInterface::on_configure(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
+  if (!cache_interface_handles()) {
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+
   RCLCPP_INFO(
     logger(), "Connecting to parol6_bridge at %s:%d (timeout %.1fs)...", bridge_host_.c_str(),
     bridge_port_, connect_timeout_sec_);
@@ -126,9 +128,10 @@ hardware_interface::CallbackReturn Parol6SystemInterface::on_configure(
   std::array<double, 6> zero{};
   if (bridge_.exchange(kOpPing, zero, resp) && resp.ok) {
     for (size_t i = 0; i < kNumJoints; ++i) {
-      hw_positions_[i] = resp.pos_rad[i];
-      hw_velocities_[i] = resp.vel_rad[i];
-      hw_commands_position_[i] = resp.pos_rad[i];
+      last_position_rad_[i] = resp.pos_rad[i];
+      set_state(position_state_handles_[i], resp.pos_rad[i], true);
+      set_state(velocity_state_handles_[i], resp.vel_rad[i], true);
+      set_command(position_command_handles_[i], resp.pos_rad[i], true);
     }
   } else {
     RCLCPP_WARN(logger(), "Initial PING to parol6_bridge did not return a valid state yet");
@@ -151,7 +154,7 @@ hardware_interface::CallbackReturn Parol6SystemInterface::on_activate(
   // Re-seed the command with current position so activation doesn't jerk
   // the arm toward a stale commanded value.
   for (size_t i = 0; i < kNumJoints; ++i) {
-    hw_commands_position_[i] = hw_positions_[i];
+    set_command(position_command_handles_[i], last_position_rad_[i], true);
   }
 
   estop_latched_ = false;
@@ -186,8 +189,9 @@ hardware_interface::return_type Parol6SystemInterface::read(
   }
 
   for (size_t i = 0; i < kNumJoints; ++i) {
-    hw_positions_[i] = resp.pos_rad[i];
-    hw_velocities_[i] = resp.vel_rad[i];
+    last_position_rad_[i] = resp.pos_rad[i];
+    set_state(position_state_handles_[i], resp.pos_rad[i], true);
+    set_state(velocity_state_handles_[i], resp.vel_rad[i], true);
   }
 
   if (resp.estop && !estop_latched_) {
@@ -206,8 +210,9 @@ hardware_interface::return_type Parol6SystemInterface::write(
 {
   std::array<double, 6> target{};
   for (size_t i = 0; i < kNumJoints; ++i) {
-    const double cmd = hw_commands_position_[i];
-    target[i] = std::isfinite(cmd) ? cmd : hw_positions_[i];
+    double cmd = std::numeric_limits<double>::quiet_NaN();
+    get_command(position_command_handles_[i], cmd, true);
+    target[i] = std::isfinite(cmd) ? cmd : last_position_rad_[i];
   }
 
   BridgeResponse resp{};

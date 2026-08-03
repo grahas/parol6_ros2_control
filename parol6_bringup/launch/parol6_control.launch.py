@@ -87,22 +87,36 @@ def _launch_setup(context, *args, **kwargs):
     controller_manager = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        name="controller_manager",
+        # Deliberately NOT set to name="controller_manager" here (even though
+        # that's the node's own default name anyway): explicitly setting it
+        # generates a `-r __node:=controller_manager` remap, which applies
+        # globally to every node ros2_control_node creates in-process --
+        # including each *controller's own* internal node, which normally
+        # gets its own distinct name (e.g. "parol6_arm_controller"). With the
+        # explicit name forcing all of them to "controller_manager" too, each
+        # controller's parameter lookups (by its own node name) silently miss
+        # everything, so it configures with empty joints/command_interfaces.
+        # See https://github.com/ros-controls/ros2_control/issues/1684.
         output="screen",
         # robot_description is intentionally not passed here -- controller_manager
         # subscribes to the '/robot_description' topic (published by
-        # robot_state_publisher, below) for that instead.
+        # robot_state_publisher, below) for that instead. Its subscription is on
+        # the private '~/robot_description' topic, which without this remapping
+        # resolves to '/controller_manager/robot_description' -- not the plain
+        # '/robot_description' topic robot_state_publisher actually publishes to,
+        # so the two never connect and the node hangs waiting for it forever.
+        remappings=[("~/robot_description", "/robot_description")],
         #
-        # As of this ros2_control generation, controller_manager no longer
-        # auto-forwards its own --params-file to spawned controller
-        # sub-nodes (see determine_controller_node_options() in
-        # controller_manager.cpp: use_global_arguments(false)). Each
-        # controller that needs its own parameters (i.e. anything other
-        # than joint_state_broadcaster, which tolerates an empty config)
+        # Separately: as of this ros2_control generation, controller_manager
+        # does not forward its own --params-file to spawned controller
+        # sub-nodes even once each controller has its own correct node name
+        # (see determine_controller_node_options() in controller_manager.cpp:
+        # use_global_arguments(false)). Confirmed by testing on real hardware:
+        # removing this while keeping the name= fix above still reproduces
+        # "Length of parameter 'joints' is '0'" for parol6_arm_controller.
+        # Each controller that needs parameters beyond its bare declaration
         # must be told where to find them via a `<controller_name>.params_file`
-        # parameter declared on controller_manager itself -- hence the
-        # second dict below, pointing parol6_arm_controller back at the
-        # same file. See README.md for how this was diagnosed.
+        # parameter declared on controller_manager itself.
         parameters=[
             controllers_yaml,
             {"parol6_arm_controller.params_file": controllers_yaml},

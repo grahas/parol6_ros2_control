@@ -111,10 +111,22 @@ class Bridge:
                 await self.client.servo_j(angles_deg)
                 return True
             if op == OP_ENABLE:
-                await self.client.resume()
+                # parol6 SDK >=0.4.0 replaced halt()/resume() with
+                # stop()/estop()/reset() (0.3.2's resume()/halt() pairing had
+                # a bug where resume() didn't reliably clear the disabled
+                # state halt() set -- reproduced as servo_j()/home() being
+                # accepted and reported successful while never actually
+                # driving the motors). reset() clears a latched protective
+                # stop and is a harmless no-op if nothing is latched, so it's
+                # safe to call unconditionally on activate.
+                await self.client.reset()
                 return True
             if op == OP_DISABLE:
-                await self.client.halt()
+                # estop() latches the controller disabled until the next
+                # reset() -- appropriate on deactivate, since ros2_control is
+                # relinquishing command authority and any residual motion
+                # capability should be positively removed until it resumes.
+                await self.client.estop()
                 return True
             if op == OP_PING:
                 return True

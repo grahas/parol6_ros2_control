@@ -55,7 +55,7 @@ sudo apt install ros-lyrical-ros2-control ros-lyrical-ros2-controllers \
                   ros-lyrical-xacro ros-lyrical-robot-state-publisher
 
 # parol6_bridge needs the parol6 pip package importable by whichever python3 runs it:
-pip install "git+https://github.com/PCrnjak/PAROL6-python-API.git@0.3.2"
+pip install "git+https://github.com/PCrnjak/PAROL6-python-API.git@0.4.0"
 ```
 
 `parol6` (via its `pinokin` dependency) currently ships prebuilt wheels requiring glibc >= 2.39. On Ubuntu 22.04 (glibc 2.35) this means `parol6`/`parol6_bridge` can't run natively there. Options, in order of preference:

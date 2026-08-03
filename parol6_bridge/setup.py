@@ -19,7 +19,14 @@ setup(
         "plugin and a parol6-server instance."
     ),
     license="MIT",
-    tests_require=["pytest"],
+    # `tests_require` (the old mechanism) is silently dropped by modern
+    # setuptools -- colcon's ament_python test task decides between its
+    # pytest and legacy-unittest steps by checking `extras_require['test']`
+    # (and `tests_require`, but that one never survives setuptools' own
+    # metadata parsing anymore), so this is what actually makes
+    # `colcon test` pick pytest instead of silently running 0 unittest
+    # tests via `python setup.py test`.
+    extras_require={"test": ["pytest"]},
     entry_points={
         "console_scripts": [
             "parol6_bridge = parol6_bridge.bridge_node:main",

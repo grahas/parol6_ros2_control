@@ -50,6 +50,14 @@ install(DIRECTORY include/ DESTINATION include)
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
+
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_bridge_protocol test/test_bridge_protocol.cpp)
+  target_include_directories(
+    test_bridge_protocol
+    PRIVATE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  )
 endif()
 
 ament_export_include_directories(include)

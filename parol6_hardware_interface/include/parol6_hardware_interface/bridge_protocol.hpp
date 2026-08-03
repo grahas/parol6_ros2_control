@@ -1,3 +1,9 @@
+// Copyright 2026 Graham Harison
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #pragma once
 
 // Wire format for the local loopback link to parol6_bridge. Keep this in

@@ -1,3 +1,9 @@
+// Copyright 2026 Graham Harison
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #pragma once
 
 #include <array>
@@ -39,9 +45,12 @@ public:
   hardware_interface::CallbackReturn on_init(
     const hardware_interface::HardwareComponentInterfaceParams & params) override;
 
-  hardware_interface::CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override;
-  hardware_interface::CallbackReturn on_activate(const rclcpp_lifecycle::State & previous_state) override;
-  hardware_interface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override;
+  hardware_interface::CallbackReturn on_configure(
+    const rclcpp_lifecycle::State & previous_state) override;
+  hardware_interface::CallbackReturn on_activate(
+    const rclcpp_lifecycle::State & previous_state) override;
+  hardware_interface::CallbackReturn on_deactivate(
+    const rclcpp_lifecycle::State & previous_state) override;
 
   hardware_interface::return_type read(
     const rclcpp::Time & time, const rclcpp::Duration & period) override;

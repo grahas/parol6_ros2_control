@@ -1,3 +1,9 @@
+// Copyright 2026 Graham Harison
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include "parol6_hardware_interface/bridge_client.hpp"
 
 #include <arpa/inet.h>
@@ -14,7 +20,7 @@
 namespace parol6_hardware_interface
 {
 
-BridgeClient::~BridgeClient() { close(); }
+BridgeClient::~BridgeClient() {close();}
 
 void BridgeClient::close()
 {

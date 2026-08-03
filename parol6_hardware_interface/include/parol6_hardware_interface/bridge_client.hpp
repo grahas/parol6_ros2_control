@@ -1,3 +1,9 @@
+// Copyright 2026 Graham Harison
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #pragma once
 
 #include <array>
@@ -29,8 +35,8 @@ public:
   bool exchange(uint8_t op, const std::array<double, 6> & target_pos_rad, BridgeResponse & out);
 
   void close();
-  bool is_connected() const { return fd_ >= 0; }
-  const std::string & last_error() const { return last_error_; }
+  bool is_connected() const {return fd_ >= 0;}
+  const std::string & last_error() const {return last_error_;}
 
 private:
   int fd_{-1};

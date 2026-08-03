@@ -1,3 +1,9 @@
+// Copyright 2026 Graham Harison
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include "parol6_hardware_interface/parol6_system_interface.hpp"
 
 #include <cmath>
@@ -12,7 +18,7 @@ namespace parol6_hardware_interface
 
 namespace
 {
-rclcpp::Logger logger() { return rclcpp::get_logger("Parol6SystemInterface"); }
+rclcpp::Logger logger() {return rclcpp::get_logger("Parol6SystemInterface");}
 
 double get_double_param(
   const hardware_interface::HardwareInfo & info, const std::string & name, double fallback)
@@ -45,7 +51,8 @@ hardware_interface::CallbackReturn Parol6SystemInterface::on_init(
 {
   if (
     hardware_interface::SystemInterface::on_init(params) !=
-    hardware_interface::CallbackReturn::SUCCESS) {
+    hardware_interface::CallbackReturn::SUCCESS)
+  {
     return hardware_interface::CallbackReturn::ERROR;
   }
 
@@ -57,7 +64,9 @@ hardware_interface::CallbackReturn Parol6SystemInterface::on_init(
   }
 
   for (const auto & joint : info_.joints) {
-    if (joint.command_interfaces.size() != 1 || joint.command_interfaces[0].name != hardware_interface::HW_IF_POSITION) {
+    if (joint.command_interfaces.size() != 1 ||
+      joint.command_interfaces[0].name != hardware_interface::HW_IF_POSITION)
+    {
       RCLCPP_FATAL(
         logger(), "Joint '%s' must expose exactly one command interface: position",
         joint.name.c_str());
@@ -147,7 +156,7 @@ hardware_interface::CallbackReturn Parol6SystemInterface::on_activate(
   BridgeResponse resp{};
   std::array<double, 6> zero{};
   if (!bridge_.exchange(kOpEnable, zero, resp) || !resp.ok) {
-    RCLCPP_FATAL(logger(), "Failed to enable robot via parol6_bridge (resume() failed)");
+    RCLCPP_FATAL(logger(), "Failed to enable robot via parol6_bridge (reset() failed)");
     return hardware_interface::CallbackReturn::ERROR;
   }
 
@@ -168,7 +177,7 @@ hardware_interface::CallbackReturn Parol6SystemInterface::on_deactivate(
   BridgeResponse resp{};
   std::array<double, 6> zero{};
   if (!bridge_.exchange(kOpDisable, zero, resp)) {
-    RCLCPP_WARN(logger(), "Failed to send halt() to parol6_bridge during deactivate");
+    RCLCPP_WARN(logger(), "Failed to send estop() to parol6_bridge during deactivate");
   }
   RCLCPP_INFO(logger(), "Robot deactivated");
   return hardware_interface::CallbackReturn::SUCCESS;

@@ -4,11 +4,12 @@
 
 **Targets a "lyrical"/6.7.x-generation `hardware_interface` API** (verified on Ubuntu 26.04 with `ros-lyrical-*` packages, on the machine actually connected to the robot). This is a newer, breaking-API generation than ROS2 Humble — see "hardware_interface API generations" below if you're on Humble or need to support both.
 
-Three packages:
+Four packages:
 
 - **`parol6_hardware_interface`** — a `hardware_interface::SystemInterface` plugin (`Parol6SystemInterface`) for `ros2_control`: position command interface + position/velocity state interfaces per joint (`L1`-`L6`), driven via streaming `servo_j()` calls.
 - **`parol6_bridge`** — a small Python asyncio daemon that speaks parol6-server's UDP wire protocol (via the `parol6` SDK's `AsyncRobotClient`) on one side, and a tiny fixed-size binary protocol over a local TCP socket on the other. Versioned together with `parol6_hardware_interface` since the loopback protocol between them is hand-synced, not code-generated.
 - **`parol6_bringup`** — a minimal (no MoveIt) launch/config package: URDF splice, `ros2_controllers`-style YAML, one launch file. Written for machines/distros where MoveIt2 isn't packaged yet (see below) — if you have MoveIt2, prefer wiring into `parol6_moveit` instead (see "Wiring into parol6_moveit").
+- **`parol6_control_services`** — `std_srvs/Trigger` ROS 2 services (`~/home`, `~/gripper_open`, `~/gripper_close`) for one-off imperative operations that don't fit `ros2_control`'s continuous read/write loop. Opens its own independent `parol6` `RobotClient` straight to `parol6-server` — **not** through `parol6_bridge`, which only understands `parol6_hardware_interface`'s fixed streaming-position protocol and has no concept of `write_io`/`home` (see the node's docstring). See "Run (parol6_control_services)" below.
 
 ## Why the bridge
 
@@ -106,6 +107,22 @@ trajectory:
     time_from_start: {sec: 3, nanosec: 0}
 "
 ```
+
+### Run (parol6_control_services)
+
+Alongside either `parol6_bringup` or `parol6_moveit`'s `real_robot.launch.py`, once `parol6-server` is up:
+
+```bash
+ros2 launch parol6_control_services control_services.launch.py
+# non-default parol6-server location:
+#   ... robot_host:=192.168.1.50 robot_port:=5001
+
+ros2 service call /parol6_control_services/home std_srvs/srv/Trigger {}
+ros2 service call /parol6_control_services/gripper_open std_srvs/srv/Trigger {}
+ros2 service call /parol6_control_services/gripper_close std_srvs/srv/Trigger {}
+```
+
+`gripper_io_pin` defaults to `0` (confirmed empirically: `write_io(0, 1)` = open, `write_io(0, 0)` = closed) — override via the same-named launch arg if your wiring differs.
 
 ## Known environment issues
 

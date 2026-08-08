@@ -28,6 +28,7 @@ setup(
     entry_points={
         "console_scripts": [
             "control_services_node = parol6_control_services.control_services_node:main",
+            "call_method_node = parol6_control_services.call_method_node:main",
         ],
     },
 )

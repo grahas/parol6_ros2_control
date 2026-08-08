@@ -4,10 +4,12 @@
   <name>parol6_control_services</name>
   <version>0.1.0</version>
   <description>
-    ROS 2 service wrappers (std_srvs/Trigger) for one-off imperative PAROL6
-    operations -- home, gripper open/close -- that don't fit ros2_control's
-    continuous read/write loop. Connects a parol6 RobotClient directly to
-    parol6-server, independent of the ros2_control/parol6_bridge path.
+    ROS 2 service wrappers for one-off imperative PAROL6 operations that
+    don't fit ros2_control's continuous read/write loop: std_srvs/Trigger
+    services (home, gripper open/close), plus call_method_node's generic
+    parol6_interfaces/CallMethod pass-through to any RobotClient method.
+    Connects a parol6 RobotClient directly to parol6-server, independent
+    of the ros2_control/parol6_bridge path.
   </description>
   <maintainer email="gupyfish@gmail.com">gupyfish</maintainer>
   <license>MIT</license>
@@ -15,6 +17,7 @@
   <exec_depend>python3</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_srvs</exec_depend>
+  <exec_depend>parol6_interfaces</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 
